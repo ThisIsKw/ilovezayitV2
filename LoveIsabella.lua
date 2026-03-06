@@ -8,8 +8,8 @@ else
 end
 
 local main = GUI:CreateWindow({
-    Title = "MOON Hub - MM2",
-    SubTitle = "Murder Mystery 2",
+    Title = "MOON running in " .. identifyexecutor(),
+    SubTitle = "MM2",
     Icon = "moon",
     TabWidth = 50,
     Size = UDimSize,
