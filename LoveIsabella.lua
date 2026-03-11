@@ -251,7 +251,7 @@ local function startGetGunAuto()
     end
     getGunConn = workspace.DescendantAdded:Connect(function(v)
         if getGunAuto and v.Name == "GunDrop" and v:IsA("BasePart") then
-            task.wait(0.1)
+            task.wait(0.05)
             PegarArmaNoChao()
         end
     end)
@@ -909,6 +909,12 @@ local function createHitboxForPlayer(player)
     hrp.Transparency = 0.9
     hrp.Material = Enum.Material.ForceField
     hrp.CanCollide = false
+    -- Desativa colisão em todo o char pra não bloquear passagem
+    for _, part in pairs(character:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.CanCollide = false
+        end
+    end
 
     local oldVisual = hrp:FindFirstChild("HitboxVisual")
     if oldVisual then oldVisual:Destroy() end
@@ -939,6 +945,10 @@ local function updateAllHitboxes()
                     hrp.Transparency = 0.9
                     hrp.Material = Enum.Material.ForceField
                     hrp.CanCollide = false
+                    -- Mantém todo char sem colisão
+                    for _, part in pairs(player.Character:GetDescendants()) do
+                        if part:IsA("BasePart") then part.CanCollide = false end
+                    end
                 end
                 local visual = hrp:FindFirstChild("HitboxVisual")
                 if hitboxConfig.visible then
@@ -1038,8 +1048,17 @@ local function stopHitbox()
                 local visual = hrp:FindFirstChild("HitboxVisual")
                 if visual then visual:Destroy() end
                 hrp.Size = originalSizes[playerName] or Vector3.new(2, 2, 1)
-                hrp.Transparency = 1
-                hrp.CanCollide = false
+                hrp.Transparency = 0
+                hrp.CanCollide = true
+                -- Restaura todas as outras partes do char também
+                local char = hrp.Parent
+                if char then
+                    for _, part in pairs(char:GetDescendants()) do
+                        if part:IsA("BasePart") then
+                            part.CanCollide = true
+                        end
+                    end
+                end
             end)
         end
     end
@@ -1780,6 +1799,78 @@ do
     })
 end
 
+-- ==================== ANTI FLING ====================
+
+local antiFlingConnections = {}
+local antiFlingHeartbeat = nil
+
+local function startAntiFling()
+    local LP = game.Players.LocalPlayer
+
+    local function applyToPlayer(player)
+        if player == LP then return end
+        local char = player.Character
+        if not char then return end
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end
+
+    local function hookPlayer(player)
+        if player == LP then return end
+        applyToPlayer(player)
+        antiFlingConnections[player.Name] = player.CharacterAdded:Connect(function(char)
+            task.wait()
+            applyToPlayer(player)
+        end)
+    end
+
+    for _, player in pairs(game.Players:GetPlayers()) do
+        hookPlayer(player)
+    end
+
+    antiFlingConnections["PlayerAdded"] = game.Players.PlayerAdded:Connect(hookPlayer)
+
+    -- Heartbeat leve: só re-aplica se o jogo reverter o CanCollide
+    antiFlingHeartbeat = game:GetService("RunService").Heartbeat:Connect(function()
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if player ~= LP and player.Character then
+                for _, part in pairs(player.Character:GetDescendants()) do
+                    if part:IsA("BasePart") and part.CanCollide then
+                        part.CanCollide = false
+                    end
+                end
+            end
+        end
+    end)
+end
+
+local function stopAntiFling()
+    if antiFlingHeartbeat then
+        antiFlingHeartbeat:Disconnect()
+        antiFlingHeartbeat = nil
+    end
+
+    for _, conn in pairs(antiFlingConnections) do
+        conn:Disconnect()
+    end
+    antiFlingConnections = {}
+
+    -- Restaura CanCollide dos outros jogadores (exceto HRP que o hitbox gerencia)
+    local LP = game.Players.LocalPlayer
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player ~= LP and player.Character then
+            for _, part in pairs(player.Character:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.CanCollide = true
+                end
+            end
+        end
+    end
+end
+
 -- ==================== PLAYER TAB ====================
 do
     playerTab:AddSection("Movement")
@@ -1809,6 +1900,19 @@ do
     })
 
     playerTab:AddSection("Abilities")
+
+    playerTab:AddToggle("AntiFling", {
+        Title = "Anti Fling",
+        Description = "Prevent other players from flinging you",
+        Default = false,
+        Callback = function(value)
+            if value then
+                startAntiFling()
+            else
+                stopAntiFling()
+            end
+        end
+    })
 
     playerTab:AddToggle("NoClip", {
         Title = "No Clip",
@@ -1966,58 +2070,58 @@ end
 game.Players.PlayerRemoving:Connect(function(player)
     local char = player.Character
     if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart")
-        if hrp then
-            velocityHistory[hrp] = nil
-            accelerationHistory[hrp] = nil
-        end
-    end
-end)
+        local hrp = char:FindFirstChild("HumanoidRootPart"GUI.SaveManager:BuildConfigSection(settingsTab)
+ se hrp entidade
+ velocidadeHistória[hrp] = nulo
+ aceleraçãoHistória[hrp] = nulo
+ fim
+ fim
+fim)
 
-game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
-    task.wait(0.5)
+jogo.Jogadores.JogadorLocal.PersonagemAdicionado:Conectar(função(personagem)
+ tarefa.esperar(0,5)
 
-    podeAtirar = true
-    equipAttempts = 0
+ podeAtirar = verdadeiro
+ equipAttempts = 0
 
-    velocityHistory = {}
-    accelerationHistory = {}
+ velocidadeHistória = {}
+ aceleraçãoHistória = {}
 
-    local humanoid = character:WaitForChild("Humanoid", 5)
-    if humanoid then
-        if MY_SPEED ~= 16 then
-            humanoid.WalkSpeed = MY_SPEED
-        end
-        if MY_JUMP ~= 50 then
-            humanoid.JumpPower = MY_JUMP
-        end
-        hookHumanoidStats(humanoid)
-    end
+    local humanoide = personagem:WaitForChild("Humanoide", 5)
+ se humanoide então
+ se MINHA_VELOCIDADE ~= 16 entidade
+ humanoide.WalkSpeed = MINHA_VELOCIDADE
+ fim
+ se MEU_SALTO ~= 50 entidade
+ humanoide.JumpPower = MEU_SALTO
+ fim
+ hookHumanoidStats(humanoide)
+ fim
 
-    if sheriffConfig.showButton and not botaoTela then
-        task.wait(0.5)
-        CriarBotaoTela()
-    end
+ se sheriffConfig.showButton e não botaoTela então
+ tarefa.esperar(0,5)
+ CriarBotaoTela()
+ fim
 
-    if noclipActive then
-        cacheNoclipParts()
-    end
+ se noclipAtivo então
+ cacheNoclipParts()
+ fim
 
-end)
+fim)
 
-podeAtirar = true
+podeAtirar = verdadeiro
 
-local _initChar = game.Players.LocalPlayer.Character
-if _initChar then
-    local _initHum = _initChar:FindFirstChild("Humanoid")
-    if _initHum then hookHumanoidStats(_initHum) end
-end
+local _initChar = jogo.Jogadores.JogadorLocal.Personagem
+se _initChar então
+    local _initHum = _initChar:FindFirstChild("Humanoide")
+ se _initHum então hookHumanoidStats(_initHum) fim
+fim
 
-GUI.SaveManager:SetFolder("moon")
-GUI.SaveManager:SetFolder("moon/mm2")
+GUI.SaveManager:SetFolder("lua")
+GUI.SaveManager:SetFolder("lua/mm2")
 GUI.InterfaceManager:SetLibrary(GUI)
-GUI.InterfaceManager:BuildInterfaceSection(settingsTab)
+GUI.InterfaceManager:BuildInterfaceSection (tabulações de configurações)
 GUI.SaveManager:IgnoreThemeSettings()
 GUI.SaveManager:SetLibrary(GUI)
-GUI.SaveManager:BuildConfigSection(settingsTab)
+GUI.SaveManager:BuildConfigSection(tabulações de configurações)
 GUI.SaveManager:LoadAutoloadConfig()
