@@ -2070,58 +2070,58 @@ end
 game.Players.PlayerRemoving:Connect(function(player)
     local char = player.Character
     if char then
-        local hrp = char:FindFirstChild("HumanoidRootPart"GUI.SaveManager:BuildConfigSection(settingsTab)
- se hrp entidade
- velocidadeHistória[hrp] = nulo
- aceleraçãoHistória[hrp] = nulo
- fim
- fim
-fim)
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            velocityHistory[hrp] = nil
+            accelerationHistory[hrp] = nil
+        end
+    end
+end)
 
-jogo.Jogadores.JogadorLocal.PersonagemAdicionado:Conectar(função(personagem)
- tarefa.esperar(0,5)
+game.Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    task.wait(0.5)
 
- podeAtirar = verdadeiro
- equipAttempts = 0
+    podeAtirar = true
+    equipAttempts = 0
 
- velocidadeHistória = {}
- aceleraçãoHistória = {}
+    velocityHistory = {}
+    accelerationHistory = {}
 
-    local humanoide = personagem:WaitForChild("Humanoide", 5)
- se humanoide então
- se MINHA_VELOCIDADE ~= 16 entidade
- humanoide.WalkSpeed = MINHA_VELOCIDADE
- fim
- se MEU_SALTO ~= 50 entidade
- humanoide.JumpPower = MEU_SALTO
- fim
- hookHumanoidStats(humanoide)
- fim
+    local humanoid = character:WaitForChild("Humanoid", 5)
+    if humanoid then
+        if MY_SPEED ~= 16 then
+            humanoid.WalkSpeed = MY_SPEED
+        end
+        if MY_JUMP ~= 50 then
+            humanoid.JumpPower = MY_JUMP
+        end
+        hookHumanoidStats(humanoid)
+    end
 
- se sheriffConfig.showButton e não botaoTela então
- tarefa.esperar(0,5)
- CriarBotaoTela()
- fim
+    if sheriffConfig.showButton and not botaoTela then
+        task.wait(0.5)
+        CriarBotaoTela()
+    end
 
- se noclipAtivo então
- cacheNoclipParts()
- fim
+    if noclipActive then
+        cacheNoclipParts()
+    end
 
-fim)
+end)
 
-podeAtirar = verdadeiro
+podeAtirar = true
 
-local _initChar = jogo.Jogadores.JogadorLocal.Personagem
-se _initChar então
-    local _initHum = _initChar:FindFirstChild("Humanoide")
- se _initHum então hookHumanoidStats(_initHum) fim
-fim
+local _initChar = game.Players.LocalPlayer.Character
+if _initChar then
+    local _initHum = _initChar:FindFirstChild("Humanoid")
+    if _initHum then hookHumanoidStats(_initHum) end
+end
 
-GUI.SaveManager:SetFolder("lua")
-GUI.SaveManager:SetFolder("lua/mm2")
+GUI.SaveManager:SetFolder("moon")
+GUI.SaveManager:SetFolder("moon/mm2")
 GUI.InterfaceManager:SetLibrary(GUI)
-GUI.InterfaceManager:BuildInterfaceSection (tabulações de configurações)
+GUI.InterfaceManager:BuildInterfaceSection(settingsTab)
 GUI.SaveManager:IgnoreThemeSettings()
 GUI.SaveManager:SetLibrary(GUI)
-GUI.SaveManager:BuildConfigSection(tabulações de configurações)
+GUI.SaveManager:BuildConfigSection(settingsTab)
 GUI.SaveManager:LoadAutoloadConfig()
