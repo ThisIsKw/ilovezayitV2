@@ -20,6 +20,7 @@ local main = GUI:CreateWindow({
 local sheriffTab = main:AddTab({ Title = "Sheriff", Icon = "crosshair" })
 local murderTab = main:AddTab({ Title = "Murder", Icon = "skull" })
 local playerTab = main:AddTab({ Title = "Player", Icon = "user" })
+local teleportTab = main:AddTab({ Title = "Teleport", Icon = "map-pin" })
 local visualTab = main:AddTab({ Title = "Visual", Icon = "eye" })
 local autoFarmTab = main:AddTab({ Title = "Auto Farm", Icon = "zap" })
 local settingsTab = main:AddTab({ Title = "Settings", Icon = "settings" })
@@ -197,7 +198,7 @@ local function DesequiparArmaRapido()
     if arma then
         local hum = char:FindFirstChild("Humanoid")
         if hum then
-            hum:UnequipTools()
+            pcall(function() hum:UnequipTools() end)
         end
     end
 end
@@ -218,9 +219,11 @@ local function PegarArmaNoChao()
                 or v:FindFirstChild("TouchInterest")
 
             if touchInterest then
-                firetouchinterest(root, v, 0)
-                task.wait(0.02)
-                firetouchinterest(root, v, 1)
+                pcall(function()
+                    firetouchinterest(root, v, 0)
+                    task.wait(0.02)
+                    firetouchinterest(root, v, 1)
+                end)
                 return
             end
 
@@ -630,7 +633,7 @@ local function Atirar()
 
         equipAttempts = equipAttempts + 1
         task.spawn(function()
-            hum:EquipTool(gunInBackpack)
+            pcall(function() hum:EquipTool(gunInBackpack) end)
             task.wait(0.05)
             if podeAtirar then Atirar() end
         end)
@@ -658,7 +661,7 @@ local function Atirar()
             posPredicao = alvoAimPos.Position
         end
 
-        evento:FireServer(CFrame.new(head.Position, posPredicao), CFrame.new(posPredicao))
+        pcall(function() evento:FireServer(CFrame.new(head.Position, posPredicao), CFrame.new(posPredicao)) end)
 
         podeAtirar = false
 
@@ -1464,6 +1467,7 @@ end
 
 -- ==================== TABS UI ====================
 
+
 -- ==================== SHERIFF TAB ====================
 do
     sheriffTab:AddSection("Shot Configuration")
@@ -1729,7 +1733,142 @@ do
             PegarArmaNoChao()
         end
     })
+
+
+
 end
+
+-- ==================== GOD MODE ====================
+
+local godModeActive = false
+local godModeConn   = nil
+
+local function startGodMode()
+    if godModeConn then return end
+    godModeActive = true
+    godModeConn = task.spawn(function()
+        while godModeActive do
+            local char = game.Players.LocalPlayer.Character
+            local hum  = char and char:FindFirstChildOfClass("Humanoid")
+            if hum then
+                if hum.Health < hum.MaxHealth then
+                    hum.Health = hum.MaxHealth
+                end
+                pcall(function()
+                    hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
+                    hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+                end)
+            end
+            task.wait(0.1)
+        end
+    end)
+end
+
+local function stopGodMode()
+    godModeActive = false
+    godModeConn = nil
+    local char = game.Players.LocalPlayer.Character
+    local hum  = char and char:FindFirstChildOfClass("Humanoid")
+    if hum then
+        pcall(function()
+            hum:SetStateEnabled(Enum.HumanoidStateType.Dead, true)
+            hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, true)
+        end)
+    end
+end
+
+-- ==================== KILL FUNCTIONS ====================
+
+local function FindSheriff()
+    for _, p in pairs(game.Players:GetPlayers()) do
+        if p ~= game.Players.LocalPlayer and p.Character then
+            local bp = p:FindFirstChild("Backpack")
+            if p.Character:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+                return p
+            end
+        end
+    end
+end
+
+local function KillTarget(targetPlayer)
+    local LP = game.Players.LocalPlayer
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local knife = (char and char:FindFirstChild("Knife")) or (LP.Backpack and LP.Backpack:FindFirstChild("Knife"))
+    if not (targetPlayer and targetPlayer.Character and knife and root) then return false end
+    local tRoot = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local tHum  = targetPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if tRoot and tHum and tHum.Health > 0 then
+        local originalPos = root.CFrame
+        if knife.Parent ~= char then knife.Parent = char end
+        root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1.2)
+        task.wait(0.1)
+        pcall(function() knife:Activate() end)
+        local attackEvent = knife:FindFirstChild("Stab") or knife:FindFirstChild("Slash")
+        if attackEvent then pcall(function() attackEvent:FireServer() end) end
+        task.wait(0.1)
+        root.CFrame = originalPos
+        return true
+    end
+    return false
+end
+
+local function ExecuteKillAll()
+    local LP = game.Players.LocalPlayer
+    local char = LP.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local knife = (char and char:FindFirstChild("Knife")) or (LP.Backpack and LP.Backpack:FindFirstChild("Knife"))
+    if not (knife and root) then return end
+    if knife.Parent ~= char then knife.Parent = char end
+    local originalPos = root.CFrame
+    for i = 1, 3 do
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= LP and p.Character then
+                local tRoot = p.Character:FindFirstChild("HumanoidRootPart")
+                local tHum  = p.Character:FindFirstChildOfClass("Humanoid")
+                if tHum and tHum.Health > 0 and tRoot then
+                    root.CFrame = tRoot.CFrame * CFrame.new(0, 0, 1)
+                    pcall(function() knife:Activate() end)
+                    local attackEvent = knife:FindFirstChild("Stab") or knife:FindFirstChild("Slash")
+                    if attackEvent then pcall(function() attackEvent:FireServer() end) end
+                    task.wait()
+                end
+            end
+        end
+    end
+    root.CFrame = originalPos
+end
+
+local autoKillSheriffActive = false
+local autoKillSheriffConn   = nil
+
+local function StartAutoKillSheriff()
+    if autoKillSheriffActive then return end
+    local LP = game.Players.LocalPlayer
+    local hasKnife = (LP.Backpack and LP.Backpack:FindFirstChild("Knife")) or
+                     (LP.Character and LP.Character:FindFirstChild("Knife"))
+    if not hasKnife then return end
+    autoKillSheriffActive = true
+    autoKillSheriffConn = task.spawn(function()
+        while autoKillSheriffActive do
+            local sheriff = FindSheriff()
+            local knife2  = (LP.Backpack and LP.Backpack:FindFirstChild("Knife")) or
+                            (LP.Character and LP.Character:FindFirstChild("Knife"))
+            if sheriff and knife2 then
+                KillTarget(sheriff)
+                task.wait(2)
+            end
+            task.wait(0.5)
+        end
+    end)
+end
+
+local function StopAutoKillSheriff()
+    autoKillSheriffActive = false
+    autoKillSheriffConn = nil
+end
+
+
 
 -- ==================== MURDER TAB ====================
 do
@@ -1797,6 +1936,88 @@ do
         Title = "How it works",
         Content = "Expands the hitbox of other players for easier hits. Visual box shows the expanded area."
     })
+
+    murderTab:AddSection("God Mode")
+
+    murderTab:AddToggle("GodMode", {
+        Title = "God Mode",
+        Description = "Keeps HP at 100 and prevents death",
+        Default = false,
+        Callback = function(v)
+            if v then
+                startGodMode()
+            else
+                stopGodMode()
+            end
+        end
+    })
+
+    murderTab:AddSection("Kill Tools")
+
+    murderTab:AddButton({
+        Title = "Kill All",
+        Description = "Eliminate all players (Murder only)",
+        Callback = function()
+            ExecuteKillAll()
+        end
+    })
+
+    local killPlayersList = {}
+    local function refreshKillPlayers()
+        killPlayersList = {}
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer then
+                table.insert(killPlayersList, p.Name)
+            end
+        end
+        return killPlayersList
+    end
+    refreshKillPlayers()
+
+    local killDropdown = murderTab:AddDropdown("KillPlayerDropdown", {
+        Title = "Select Player to Kill",
+        Values = killPlayersList,
+        Default = 1,
+    })
+
+    murderTab:AddButton({
+        Title = "Refresh Player List",
+        Callback = function()
+            killDropdown:SetValues(refreshKillPlayers())
+        end
+    })
+
+    murderTab:AddButton({
+        Title = "Kill Selected Player",
+        Description = "Kill the selected player",
+        Callback = function()
+            local name = killDropdown.Value
+            if not name then return end
+            local target = game.Players:FindFirstChild(name)
+            if target then KillTarget(target) end
+        end
+    })
+
+    murderTab:AddSection("Auto Kill Sheriff")
+
+    murderTab:AddButton({
+        Title = "Kill Sheriff Now",
+        Description = "Kill the sheriff once immediately",
+        Callback = function()
+            local sheriff = FindSheriff()
+            if sheriff then KillTarget(sheriff) end
+        end
+    })
+
+    murderTab:AddToggle("AutoKillSheriff", {
+        Title = "Auto Kill Sheriff",
+        Description = "Automatically hunt and kill the sheriff in a loop",
+        Default = false,
+        Callback = function(v)
+            if v then StartAutoKillSheriff() else StopAutoKillSheriff() end
+        end
+    })
+
 end
 
 -- ==================== ANTI FLING ====================
@@ -1923,6 +2144,123 @@ do
                 startNoClip()
             else
                 stopNoClip()
+            end
+        end
+    })
+end
+
+-- ==================== TELEPORT TAB ====================
+do
+    teleportTab:AddSection("Quick Teleport")
+
+    teleportTab:AddButton({
+        Title = "Teleport to Lobby",
+        Description = "Return to the spawn/lobby area",
+        Callback = function()
+            local LP = game.Players.LocalPlayer
+            local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+            if not root then return end
+
+            -- Tenta achar o SpawnLocation real do mapa
+            local spawn = nil
+            for _, v in pairs(workspace:GetDescendants()) do
+                if v:IsA("SpawnLocation") then
+                    spawn = v
+                    break
+                end
+            end
+
+            if spawn then
+                root.CFrame = spawn.CFrame + Vector3.new(0, 3, 0)
+            else
+                -- Fallback: vai pra posição Y alta (lobby do MM2 fica acima do mapa)
+                root.CFrame = CFrame.new(root.Position.X, 600, root.Position.Z)
+            end
+        end
+    })
+
+    teleportTab:AddButton({
+        Title = "Teleport to Murder",
+        Description = "Teleport to the murderer",
+        Callback = function()
+            local LP = game.Players.LocalPlayer
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local bp = p:FindFirstChild("Backpack")
+                    if p.Character:FindFirstChild("Knife") or (bp and bp:FindFirstChild("Knife")) then
+                        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        local tRoot  = p.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot and tRoot then
+                            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    })
+
+    teleportTab:AddButton({
+        Title = "Teleport to Sheriff",
+        Description = "Teleport to the sheriff",
+        Callback = function()
+            local LP = game.Players.LocalPlayer
+            for _, p in pairs(game.Players:GetPlayers()) do
+                if p ~= LP and p.Character then
+                    local bp = p:FindFirstChild("Backpack")
+                    if p.Character:FindFirstChild("Gun") or (bp and bp:FindFirstChild("Gun")) then
+                        local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                        local tRoot  = p.Character:FindFirstChild("HumanoidRootPart")
+                        if myRoot and tRoot then
+                            myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
+                        end
+                        break
+                    end
+                end
+            end
+        end
+    })
+
+    teleportTab:AddSection("Teleport to Player")
+
+    local tpPlayersList = {}
+    local function refreshTpPlayers()
+        tpPlayersList = {}
+        for _, p in pairs(game.Players:GetPlayers()) do
+            if p ~= game.Players.LocalPlayer then
+                table.insert(tpPlayersList, p.Name)
+            end
+        end
+        return tpPlayersList
+    end
+    refreshTpPlayers()
+
+    local tpDropdown = teleportTab:AddDropdown("TeleportPlayerDropdown", {
+        Title = "Select Player",
+        Values = tpPlayersList,
+        Default = 1,
+    })
+
+    teleportTab:AddButton({
+        Title = "Refresh Player List",
+        Callback = function()
+            tpDropdown:SetValues(refreshTpPlayers())
+        end
+    })
+
+    teleportTab:AddButton({
+        Title = "Teleport to Selected Player",
+        Callback = function()
+            local LP = game.Players.LocalPlayer
+            local name = tpDropdown.Value
+            if not name then return end
+            local target = game.Players:FindFirstChild(name)
+            if target and target.Character then
+                local myRoot = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+                local tRoot  = target.Character:FindFirstChild("HumanoidRootPart")
+                if myRoot and tRoot then
+                    myRoot.CFrame = tRoot.CFrame * CFrame.new(0, 0, 3)
+                end
             end
         end
     })
